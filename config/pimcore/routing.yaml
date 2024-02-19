@@ -1,0 +1,8 @@
+# starfruit_ecommerce_route_demo:
+#     resource: "@StarfruitEcommerceBundle/src/Controller/Demo/*"
+#     type: annotation
+#     prefix: /starfruit/demo
+
+starfruit_ecommerce_route:
+    resource: "@StarfruitEcommerceBundle/src/Controller/*"
+    type: annotation

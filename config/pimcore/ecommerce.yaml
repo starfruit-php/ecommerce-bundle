@@ -1,0 +1,53 @@
+pimcore_ecommerce_framework:
+
+    # Configuration of price systems - key is name of price system
+    price_systems:
+        default:
+            # Price system defined and configured as container service
+            id: app.default_price_system
+
+    index_service:
+        tenants:
+            default:
+                config_id: Starfruit\EcommerceBundle\Ecommerce\IndexService\Config\MySqlConfig
+                worker_id: Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Worker\DefaultMysql
+
+    checkout_manager:
+        tenants:
+            default:
+                steps:
+                    deliveryaddress:
+                        class: \Pimcore\Bundle\EcommerceFrameworkBundle\CheckoutManager\DeliveryAddress
+                    confirm:
+                        class: \Starfruit\EcommerceBundle\Ecommerce\CheckoutManager\Confirm
+
+    # order_manager:
+    #     tenants:
+    #         default:
+    #             options:
+    #                 parent_order_folder: /Shop/Orders/%%Y/%%m/%%d
+
+services:
+
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Custom service definitions for index service
+    Starfruit\EcommerceBundle\Ecommerce\IndexService\Config\MySqlConfig:
+        parent: Pimcore\Bundle\EcommerceFrameworkBundle\IndexService\Config\AbstractConfig
+        autowire: true
+        autoconfigure: false
+
+    # define own price system service and configure options for attribute name and price object class
+    app.default_price_system:
+        class: Pimcore\Bundle\EcommerceFrameworkBundle\PriceSystem\AttributePriceSystem
+        arguments:
+            $options:
+                attribute_name: price
+
+    Pimcore\Localization\IntlFormatter:
+        public: true
+        calls:
+            - [setCurrencyFormat, ['en', '¤¤ #,##0.00']]
+            - [setCurrencyFormat, ['de', '#,##0.00 ¤¤']]
