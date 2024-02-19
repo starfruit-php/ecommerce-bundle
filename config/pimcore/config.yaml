@@ -1,2 +1,2 @@
 imports:
-    - { resource: default-ecommerce.yaml }
+    - { resource: ecommerce.yaml }
