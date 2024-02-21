@@ -11,7 +11,7 @@ use Pimcore\Bundle\EcommerceFrameworkBundle\Factory;
 use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\CartInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\ProductInterface;
 use Pimcore\Bundle\EcommerceFrameworkBundle\Model\CheckoutableInterface;
-use App\Model\Product\AbstractProduct;
+use Starfruit\EcommerceBundle\Model\Product\AbstractProduct;
 use Starfruit\EcommerceBundle\Event\CartEvents;
 use Starfruit\EcommerceBundle\Event\Model\CartEvent;
 
@@ -55,19 +55,19 @@ class CartController extends BaseController
             throw new \Exception('Invalid request');
         }
 
-        $id = $request->query->getInt('id');
+        $id = (int) $request->get('id');
         $product = AbstractProduct::getById($id);
 
         if (null === $product) {
-            throw new \Exception('Product not found');
+            return $this->renderCart();
         }
 
         $cart = $this->getCart();
         if ($cart->getItemCount() > self::MAX_CART_ITEMS) {
-            throw new \Exception('Maximum Cart items limit Reached');
+            return $this->renderCart();
         }
 
-        $amount = $request->query->getInt('amount');
+        $amount = $request->request->getInt('amount');
 
         // preAddToCartEvent
         $preAddToCartEvent = new CartEvent($request);
@@ -137,7 +137,7 @@ class CartController extends BaseController
      */
     public function removeFromCartAction(Request $request, Factory $ecommerceFactory): RedirectResponse
     {
-        if (!$this->isCsrfTokenValid('cartListing', $request->request->get('_csrf_token'))) {
+        if (!$this->isCsrfTokenValid('removeFromCart', $request->request->get('_csrf_token'))) {
             throw new \Exception('Invalid request');
         }
 
@@ -145,7 +145,7 @@ class CartController extends BaseController
         $preRemoveFromCartEvent = new CartEvent($request);
         \Pimcore::getEventDispatcher()->dispatch($preRemoveFromCartEvent, CartEvents::PRE_REMOVE);
 
-        $id = $request->query->getInt('id');
+        $id = (int) $request->get('id');
         $product = AbstractProduct::getById($id);
 
         $cart = $this->getCart();
