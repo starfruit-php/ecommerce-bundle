@@ -1,2 +1,3 @@
 imports:
     - { resource: ecommerce.yaml }
+    - { resource: starfruit_ecommerce.yaml }

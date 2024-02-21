@@ -2,22 +2,22 @@
 
 namespace Starfruit\EcommerceBundle\Controller;
 
-use App\Model\Product\AbstractProduct;
-use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\CartInterface;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Exception\VoucherServiceException;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Factory;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\CheckoutableInterface;
-use Pimcore\Bundle\EcommerceFrameworkBundle\Model\ProductInterface;
-use Pimcore\Translation\Translator;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Pimcore\Translation\Translator;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Factory;
+use Pimcore\Bundle\EcommerceFrameworkBundle\CartManager\CartInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\ProductInterface;
+use Pimcore\Bundle\EcommerceFrameworkBundle\Model\CheckoutableInterface;
+use App\Model\Product\AbstractProduct;
+use Starfruit\EcommerceBundle\Event\CartEvents;
+use Starfruit\EcommerceBundle\Event\Model\CartEvent;
 
 class CartController extends BaseController
 {
-    const DEFAULT_CART_NAME = 'cart';
+    const MAX_CART_ITEMS = 99;
 
     /**
      * @var Factory
@@ -39,6 +39,11 @@ class CartController extends BaseController
         return $cartManager->getOrCreateCartByName(self::DEFAULT_CART_NAME);
     }
 
+    private function renderCart()
+    {
+        return $this->redirectToRoute('stf-cart');
+    }
+
     /**
      * @Route("/cart/add-to-cart", name="stf-cart-add-to", methods={"POST"})
      *
@@ -58,18 +63,24 @@ class CartController extends BaseController
         }
 
         $cart = $this->getCart();
-        if ($cart->getItemCount() > 99) {
+        if ($cart->getItemCount() > self::MAX_CART_ITEMS) {
             throw new \Exception('Maximum Cart items limit Reached');
         }
 
-        $cart->addItem($product, 1);
+        $amount = $request->query->getInt('amount');
+
+        // preAddToCartEvent
+        $preAddToCartEvent = new CartEvent($request);
+        \Pimcore::getEventDispatcher()->dispatch($preAddToCartEvent, CartEvents::PRE_ADD);
+
+        $cart->addItem($product, $amount);
         $cart->save();
 
-        $trackingManager = $ecommerceFactory->getTrackingManager();
-        $trackingManager->trackCartProductActionAdd($cart, $product);
-        $trackingManager->forwardTrackedCodesAsFlashMessage();
+        // postAddToCartEvent
+        $postAddToCartEvent = new CartEvent($request);
+        \Pimcore::getEventDispatcher()->dispatch($postAddToCartEvent, CartEvents::POST_ADD);
 
-        return $this->redirectToRoute('stf-cart');
+        return $this->renderCart();
     }
 
     /**
@@ -86,19 +97,24 @@ class CartController extends BaseController
 
         if ($request->getMethod() == Request::METHOD_POST) {
             if (!$this->isCsrfTokenValid('cartListing', $request->get('_csrf_token'))) {
-                throw new AccessDeniedHttpException('Invalid request');
+                throw new \Exception('Invalid request');
             }
 
             $items = $request->get('items');
+
+            // preUpdateCartEvent
+            $preUpdateCartEvent = new CartEvent($request);
+            \Pimcore::getEventDispatcher()->dispatch($preUpdateCartEvent, CartEvents::PRE_UPDATE);
 
             foreach ($items as $itemKey => $quantity) {
                 if (!is_numeric($quantity)) {
                     continue;
                 }
 
-                if ($cart->getItemCount() > 99) {
+                if ($cart->getItemCount() > self::MAX_CART_ITEMS) {
                     break;
                 }
+
                 $product = AbstractProduct::getById($itemKey);
                 if ($product instanceof CheckoutableInterface) {
                     $cart->updateItem($itemKey, $product, floor($quantity), true);
@@ -106,16 +122,14 @@ class CartController extends BaseController
             }
             $cart->save();
 
-            $trackingManager = $ecommerceFactory->getTrackingManager();
-            $trackingManager->trackCartUpdate($cart);
+            // postUpdateCartEvent
+            $postUpdateCartEvent = new CartEvent($request);
+            \Pimcore::getEventDispatcher()->dispatch($postUpdateCartEvent, CartEvents::POST_UPDATE);
         }
 
         $params = array_merge($request->request->all(), $request->query->all());
-        if ($cart->isEmpty()) {
-            return $this->render('cart/cart_empty.html.twig', array_merge($params, ['cart' => $cart]));
-        } else {
-            return $this->render('cart/cart_listing.html.twig', array_merge($params, ['cart' => $cart]));
-        }
+
+        return $this->render($this->getCartDefaultView(), array_merge($params, ['cart' => $cart]));
     }
 
     /**
@@ -127,6 +141,10 @@ class CartController extends BaseController
             throw new \Exception('Invalid request');
         }
 
+        // preRemoveFromCartEvent
+        $preRemoveFromCartEvent = new CartEvent($request);
+        \Pimcore::getEventDispatcher()->dispatch($preRemoveFromCartEvent, CartEvents::PRE_REMOVE);
+
         $id = $request->query->getInt('id');
         $product = AbstractProduct::getById($id);
 
@@ -135,12 +153,12 @@ class CartController extends BaseController
         $cart->save();
 
         if ($product instanceof ProductInterface) {
-            $trackingManager = $ecommerceFactory->getTrackingManager();
-            $trackingManager->trackCartProductActionRemove($cart, $product);
-            $trackingManager->forwardTrackedCodesAsFlashMessage();
+            // postRemoveFromCartEvent
+            $postRemoveFromCartEvent = new CartEvent($request);
+            \Pimcore::getEventDispatcher()->dispatch($postRemoveFromCartEvent, CartEvents::POST_REMOVE);
         }
 
-        return $this->redirectToRoute('stf-cart');
+        return $this->renderCart();
     }
 
     /**
@@ -176,7 +194,7 @@ class CartController extends BaseController
             $this->addFlash('danger', $translator->trans('cart.empty-voucher-code'));
         }
 
-        return $this->redirectToRoute('stf-cart');
+        return $this->renderCart();
     }
 
     /**
@@ -206,6 +224,6 @@ class CartController extends BaseController
             $this->addFlash('danger', $translator->trans('cart.empty-voucher-code'));
         }
 
-        return $this->redirectToRoute('stf-cart');
+        return $this->renderCart();
     }
 }

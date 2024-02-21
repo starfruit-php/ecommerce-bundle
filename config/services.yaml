@@ -16,6 +16,14 @@ services:
         public: true
         tags: ['controller.service_arguments']
 
+    Starfruit\EcommerceBundle\Service\:
+        resource: '../src/Service'
+        public: true
+
+    Starfruit\EcommerceBundle\Event\:
+        resource: '../src/Event'
+        public: true
+
 # add more services, or override services that need manual wiring
 #    Starfruit\EcommerceBundle\ExampleClass:
 #        arguments:

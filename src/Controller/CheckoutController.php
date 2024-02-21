@@ -24,7 +24,7 @@ class CheckoutController extends BaseController
     public function checkoutAddressAction(Factory $factory, Request $request, Factory $ecommerceFactory)
     {
         $cartManager = $factory->getCartManager();
-        $cart = $cartManager->getOrCreateCartByName('cart');
+        $cart = $cartManager->getOrCreateCartByName(self::DEFAULT_CART_NAME);
 
         $checkoutManager = $factory->getCheckoutManager($cart);
 
@@ -58,7 +58,7 @@ class CheckoutController extends BaseController
         $trackingManager = $ecommerceFactory->getTrackingManager();
         $trackingManager->trackCheckoutStep($deliveryAddress, $cart, 1);
 
-        return $this->render('checkout/checkout_address.html.twig', [
+        return $this->render($this->getCheckoutAddressView(), [
             'cart' => $cart,
             'form' => $form->createView(),
         ]);

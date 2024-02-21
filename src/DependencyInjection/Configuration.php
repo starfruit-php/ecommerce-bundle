@@ -23,6 +23,33 @@ class Configuration implements ConfigurationInterface
         // configure your bundle. See the documentation linked above for
         // more information on that topic.
 
+        $treeBuilder->getRootNode()
+            ->children()
+                ->arrayNode('view_templates')
+                    ->children()
+                        ->arrayNode('cart')
+                            ->children()
+                                ->scalarNode('default')
+                                    ->info('default view for cart')
+                                    ->defaultValue('cart/cart.html.twig')
+                                    ->cannotBeEmpty()
+                                ->end()
+                            ->end()
+                        ->end()
+                        ->arrayNode('checkout')
+                            ->children()
+                                ->scalarNode('address')
+                                    ->info('view for checkout address step')
+                                    ->defaultValue('checkout/address.html.twig')
+                                    ->cannotBeEmpty()
+                                ->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
+            ->end()
+        ;
+
         return $treeBuilder;
     }
 }

@@ -1,0 +1,6 @@
+starfruit_ecommerce:
+    view_templates:
+        cart:
+            default: 'cart/cart_listing.html.twig'
+        checkout:
+            address: 'checkout/checkout_address.html.twig'
